@@ -1,6 +1,9 @@
 # TEdi
 Next word prediction using deep learning
 
+Here, the model --->
+Demo            --->
+
 ![image](https://github.com/Abdul-Rahman-26/TEdi/assets/113432797/66d9750c-f27f-4b06-abca-8e5c7bfc3ff6)
 ![image](https://github.com/Abdul-Rahman-26/TEdi/assets/113432797/72ebaa61-86c9-46c2-b056-62f7f91b5002)
 ![image](https://github.com/Abdul-Rahman-26/TEdi/assets/113432797/5e2d7f60-ceec-493d-a827-835c68ed4eba)
