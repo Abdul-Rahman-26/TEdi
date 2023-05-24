@@ -1,0 +1,489 @@
+import tkinter as tk
+from tensorflow.keras.models import load_model
+import numpy as np
+import pickle
+# Importing Required libraries & Modules
+from tkinter import *
+from tkinter import messagebox
+from tkinter import filedialog
+from PIL import Image, ImageTk
+import os
+import random
+import logging
+from tensorflow.keras.models import load_model
+import re
+
+with open('./user_input.log' ,'r') as f:
+    text = f.read()
+words = re.findall(r'\b[A-Za-z]+\b', text)
+
+
+# Create a Tkinter GUI
+root = tk.Tk()
+
+filename = None
+title = StringVar()
+status = StringVar()
+
+# Load the model and tokenizer
+model = load_model('next_words.h5')
+tokenizer = pickle.load(open('token.pkl', 'rb'))
+
+###################################################################33
+
+def predict_next_words(model, tokenizer, text):
+    sequence = tokenizer.texts_to_sequences([text])
+    if len(sequence[0]) == 0:  # Empty sequence
+        predicted_words = np.random.choice(list(tokenizer.word_index.keys()), size=3)
+    else:
+        sequence = np.array(sequence)
+        preds = model.predict(sequence)
+        sorted_preds = np.argsort(preds, axis=1)[:,::-1]
+        predicted_words = []
+        for i in range(3):
+            for word, index in tokenizer.word_index.items():
+                if index == sorted_preds[0][i]:
+                    predicted_words.append(word)
+                    break
+    return predicted_words
+
+#update suggestion box
+
+def update_suggestion_boxes(event=None):
+    user_input = txtarea.get("1.0", "end-1c")
+    if user_input:
+        predicted_words = predict_next_words(model, tokenizer, user_input)
+        for i, predicted_word in enumerate(predicted_words):
+            suggestion_boxes[i].config(state="normal")
+            suggestion_boxes[i].delete("1.0", tk.END)
+            suggestion_boxes[i].insert(tk.END, predicted_word)
+            suggestion_boxes[i].config(state="disabled")
+    else:
+        for i in range(3):
+            suggestion_boxes[i].config(state="normal")
+            suggestion_boxes[i].delete("1.0", tk.END)
+            suggestion_boxes[i].insert(tk.END, predict_next_word(model, tokenizer, ""))
+            suggestion_boxes[i].config(state="disabled")
+
+
+# Define a logger to save the user input and the newly typed word without suggestion
+import logging
+import tkinter as tk
+
+# Define a logger to save the user input and the newly typed word without suggestion
+logger = logging.getLogger('user_input_logger')
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler('user_input.log')
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+# Define a function to insert the suggestion word into the user input box
+# Define a function to insert the suggestion word into the user input box
+def insert_suggestion_word(event=None):
+    global typed_text
+    user_input = txtarea.get("1.0", "end-1c")
+    suggestion_word = ""
+    if event.keysym_num == 49:
+        suggestion_word = suggestion_boxes[0].get("1.0", "end-1c")
+    elif event.keysym_num == 50:
+        suggestion_word = suggestion_boxes[1].get("1.0", "end-1c")
+    elif event.keysym_num == 51:
+        suggestion_word = suggestion_boxes[2].get("1.0", "end-1c")
+    if suggestion_word:
+        if user_input:
+            last_words = user_input.split()[:] # only get the last word
+            user_input = " ".join([suggestion_word])
+            # Log the user input and the newly typed word without suggestion
+            logger.info(f'{last_words}')
+        else:
+            user_input = suggestion_word
+        txtarea.insert(tk.END, user_input + " ") # add a space after the suggestion word
+        # Call the update_suggestion_boxes function to update the suggestions based on the new user input
+        update_suggestion_boxes()
+    elif event.keysym == "space":
+        # If no suggestion word is selected and the key pressed is space,
+        # log the user input with the previous word and the newly typed word
+        if typed_text and typed_text[-1] == " ":
+            user_input = user_input[:-1]  # remove the space at the end
+            last_words = user_input.split()[:] # only get the last word
+            with open('user_input.txt', 'a') as file:
+                file.write(f'{last_words}\n')
+            logger.info(f'{last_words}')
+            typed_text = ""
+        else:
+            txtarea.insert(tk.END, " ")
+    elif event.keysym == "Return":
+        # If no suggestion word is selected and the key pressed is Return,
+        # log the user input without the newly typed word
+        logger.info(user_input)
+        txtarea.insert(tk.END, "\n")
+    else:
+        # If no suggestion word is selected and the key pressed is not space or Return,
+        # save the typed character to the typed_text variable
+        typed_text += event.char
+
+    for i in range(2):
+        suggestion_boxes[i].config(state="normal")
+        suggestion_boxes[i].delete("1.0", tk.END)
+        suggestion_boxes[i].config(state="disabled")
+
+
+##############################################################################################################################################
+# Creating Menubar
+menubar = Menu(root, font=("times new roman", 15, "bold"), activebackground="skyblue")
+root.config(menu=menubar)
+
+# Creating File Menu
+filemenu = Menu(menubar, font=("times new roman", 12, "bold"), activebackground="skyblue", tearoff=0)
+# Adding New file Command
+def newfile(*args):
+    global filename
+    ##########################################
+    # Clearing the Text Area
+    txtarea.delete("1.0",END)
+    # Updating filename as None
+    filename = None
+    # Calling settitle funtion
+    settitle()
+    # updating status
+    status.set("New File Created")
+filemenu.add_command(label="New", font=("times new roman", 10), accelerator="Ctrl+N", command=newfile)
+
+# Adding Open file Command
+
+def openfile(*args):
+    global filename
+    # Exception handling
+    try:
+        # Asking for file to open
+        filename = filedialog.askopenfilename(title="Select file",filetypes=(("All Files","*.*"),("Text Files","*.txt"),("Python Files","*.py"),("Pdf","*.pdf")))
+        # checking if filename not none
+        if filename:
+            # opening file in readmode
+            infile = open(filename,"r")
+            # Clearing text area
+            txtarea.delete("1.0",END)
+            # Inserting data Line by line into text area
+            for line in infile:
+                txtarea.insert(END,line)
+            # Closing the file  
+            infile.close()
+            # Calling Set title
+            settitle()
+            # Updating Status
+            status.set("Opened Successfully")
+    except Exception as e:
+        messagebox.showerror("Exception",e)
+filemenu.add_command(label="Open", font=("times new roman", 10), accelerator="Ctrl+O", command=openfile)
+
+# Adding Save File Command
+def savefile(*args):
+    global filename
+    # Exception handling
+    try:
+        # checking if filename not none
+        if filename:
+            # opening file in write mode
+            outfile = open(filename,"w")
+            # Writing data to file
+            outfile.write(txtarea.get("1.0",END))
+            # Closing the file
+            outfile.close()
+            # Calling settitle
+            settitle()
+            # Updating status
+            status.set("Saved Successfully")
+        else:
+            # Calling SaveAs File Function
+            saveasfile()
+    except Exception as e:
+        messagebox.showerror("Exception",e)
+filemenu.add_command(label="Save", font=("times new roman", 10), accelerator="Ctrl+S", command=savefile)
+
+# Defining Set Title Function
+def settitle():
+    global filename
+    if filename:
+        root.title(filename + " - Text Editor")
+    else:
+        root.title("Untitled - Text Editor")
+
+# Defining Save As File Function
+def saveasfile(*args):
+    global filename
+    # Exception handling
+    try:
+        # Asking for file name and type to save
+        untitledfile = filedialog.asksaveasfilename(title="Save file As", defaultextension=".txt",
+                                                    initialfile="Untitled.txt",
+                                                    filetypes=(("All Files", "*.*"), ("Text Files", "*.txt"),
+                                                               ("Python Files", "*.py")))
+        # Reading the data from text area
+        data = txtarea.get("1.0", END)
+        # Opening File in write mode
+        outfile = open(untitledfile, "w")
+        # Writing Data into file
+        outfile.write(data)
+        # Closing File
+        outfile.close()
+        # Updating filename as Untitled
+        filename = untitledfile
+        # Calling Set title
+        settitle()
+        # Updating Status
+        status.set("Saved Successfully")
+    except Exception as e:
+        messagebox.showerror("Exception", e)
+
+# Defining Exit Function
+def exit(*args):
+    op = messagebox.askyesno("WARNING", "Your Unsaved Data May be Lost!!")
+    if op > 0:
+        root.destroy()
+    else:
+        return
+
+# Defining Cut Function
+def cut(*args):
+    txtarea.event_generate("<<Cut>>")
+
+# Defining Copy Function
+def copy(*args):
+    txtarea.event_generate("<<Copy>>")
+
+# Defining Paste Function
+def paste(*args):
+    txtarea.event_generate("<<Paste>>")
+
+# Defining Undo Function
+def undo(*args):
+    global filename
+    # Exception handling
+    try:
+        # checking if filename not none
+        if filename:
+            # Clearing Text Area
+            txtarea.delete("1.0", END)
+            # opening File in read mode
+            infile = open(filename, "r")
+            # Inserting data Line by line into text area
+            for line in infile:
+                txtarea.insert(END, line)
+            # Closing File
+            infile.close()
+            # Calling Set title
+            settitle()
+            # Updating Status
+            status.set("Undone Successfully")
+        else:
+            # Clearing Text Area
+            txtarea.delete("1.0", END)
+            # Updating filename as None
+            filename = None
+            # Calling Set title
+            settitle()
+            # Updating Status
+            status.set("Undone Successfully")
+    except Exception as e:
+        messagebox.showerror("Exception", e)
+
+
+def infoabout():
+    messagebox.showinfo("About TEdi","It is text editor with nextword prediction using deep learning.")
+
+def shortcuts(txtarea):
+    # Binding Ctrl+n to newfile funtion
+    txtarea.bind("<Control-n>", newfile)
+    # Binding Ctrl+o to openfile funtion
+    txtarea.bind("<Control-o>", openfile)
+    # Binding Ctrl+s to savefile funtion
+    txtarea.bind("<Control-s>", savefile)
+    # Binding Ctrl+a to saveasfile funtion
+    txtarea.bind("<Control-Shift-s>", saveasfile)   
+    # Binding Ctrl+e to exit funtion
+    txtarea.bind("<Control-e>", exit)
+    #Binding Ctrl+x to cut funtion
+    txtarea.bind("<Control-x>", cut)
+    # Binding Ctrl+c to copy funtion
+    txtarea.bind("<Control-c>", copy)
+    # Binding Ctrl+v to paste funtion
+    txtarea.bind("<Control-v>", paste)
+    # Binding Ctrl+u to undo funtion
+    txtarea.bind("<Control-u>", undo)
+
+
+# Creating Menu Bar
+menubar = Menu(root)
+
+# Creating File Menu
+file = Menu(menubar, tearoff=0)
+file.add_command(label="New")
+file.add_command(label="Open")
+file.add_command(label="Save", command=saveasfile)
+file.add_command(label="Save As", command=saveasfile)
+file.add_separator()
+file.add_command(label="Exit", command=exit)
+
+
+# Creating Menubar
+menubar = Menu(root, font=("times new roman", 15, "bold"), activebackground="skyblue")
+root.config(menu=menubar)
+
+# Creating File Menu
+filemenu = Menu(menubar, font=("times new roman", 12, "bold"), activebackground="skyblue", tearoff=0)
+# Adding New file Command
+filemenu.add_command(label="New", font=("times new roman", 10), accelerator="Ctrl+N", command=newfile)
+# Adding Open file Command
+filemenu.add_command(label="Open", font=("times new roman", 10), accelerator="Ctrl+O", command=openfile)
+# Adding Save File Command
+filemenu.add_command(label="Save", font=("times new roman", 10), accelerator="Ctrl+S", command=savefile)
+# Adding Save As file Command
+filemenu.add_command(label="Save As", font=("times new roman", 10), accelerator="Ctrl+Shift+s", command=saveasfile)
+# Adding Seprator
+filemenu.add_separator()
+# Adding Exit window Command
+filemenu.add_command(label="Exit", font=("times new roman", 10), accelerator="Ctrl+E", command=exit)
+# Cascading filemenu to menubar
+menubar.add_cascade(label="File", font=("times new roman", 10), menu=filemenu)
+
+# Creating Edit Menu
+editmenu = Menu(menubar, font=("times new roman", 12, "bold"), activebackground="skyblue", tearoff=0)
+# Adding Cut text Command
+editmenu.add_command(label="Cut", font=("times new roman", 10), accelerator="Ctrl+X", command=cut)
+# Adding Copy text Command
+editmenu.add_command(label="Copy", font=("times new roman", 10), accelerator="Ctrl+C", command=copy)
+# Adding Paste text command
+editmenu.add_command(label="Paste", font=("times new roman", 10), accelerator="Ctrl+V", command=paste)
+# Adding Seprator
+editmenu.add_separator()
+# Adding Undo text Command
+editmenu.add_command(label="Undo", font=("times new roman", 10), accelerator="Ctrl+U", command=undo)
+# Cascading editmenu to menubar
+menubar.add_cascade(label="Edit", font=("times new roman", 10), menu=editmenu)
+# Creating Help Menu
+helpmenu = Menu(menubar,font=("times new roman",12,"bold"),activebackground="skyblue",tearoff=0)
+# Adding About Command
+helpmenu.add_command(label="About",font=("times new roman",10),command=infoabout)
+# Cascading helpmenu to menubar
+menubar.add_cascade(label="Help", font=("times new roman",10),menu=helpmenu)
+
+# Creating Scrollbar
+scrol_y = Scrollbar(root,orient=VERTICAL)
+# Creating Text Area
+txtarea = Text(root,yscrollcommand=scrol_y.set,font=("times new roman",12),state="normal",relief=GROOVE)
+# Packing scrollbar to root window
+scrol_y.pack(side=RIGHT,fill=Y)
+# Adding Scrollbar to text area
+scrol_y.config(command=txtarea.yview)
+# Calling shortcuts funtion
+shortcuts(txtarea)
+
+
+
+################################################################################################################################################
+
+
+root.geometry("1200x700+200+150") # Set the size of the window
+
+root.title("TEdi")
+#self.settitle()
+icon = ImageTk.PhotoImage(Image.open('./Tedi.png'))
+root.iconphoto(False, icon)
+
+
+# Create a text input box
+txtarea = tk.Text(root)
+txtarea.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+# Create a variable to store the typed text
+typed_text = ""
+# Bind the keys "1", "2", and "3" to insert the corresponding suggestion word
+bind_key_value = txtarea.bind("1", insert_suggestion_word)
+bind_key_value = txtarea.bind("2", insert_suggestion_word)
+bind_key_value = txtarea.bind("3", insert_suggestion_word)
+
+# Bind the key "<KeyRelease>" to the update_suggestion_boxes function
+bind_key_value =txtarea.bind("<space>", update_suggestion_boxes)
+
+# Create suggestion boxes
+suggestion_boxes = []
+for i in range(3):
+    suggestion_box = tk.Text(root, height=1, width=10, state="disabled", bg="white", fg="gray50")
+    suggestion_box.pack(side=tk.LEFT, padx=5, pady=5)
+    suggestion_boxes.append(suggestion_box)
+    
+def save_typed_text(event=None):
+    user_input = txtarea.get("1.0", "end-1c")
+    with open("typed_text.txt", "w") as f:
+        f.write(user_input)
+
+bind_key_value =txtarea.bind("<KeyRelease>", save_typed_text)
+###################################################################################
+# Create a dictionary to store the frequency count of each word
+freq_dict = {}
+for i in range(len(words)-1):
+    curr_word = words[i]
+    next_word = words[i+1]
+    if curr_word not in freq_dict:
+        freq_dict[curr_word] = {}
+    if next_word not in freq_dict[curr_word]:
+        freq_dict[curr_word][next_word] = 0
+    freq_dict[curr_word][next_word] += 1
+
+# Find the most frequent next word for a given word
+def most_frequent_next_word(word):
+    if word in freq_dict:
+        next_words = freq_dict[word]
+        sorted_next_words = sorted(next_words.items(), key=lambda x: x[1], reverse=True)
+        return sorted_next_words[0][0]
+    else:
+        return None
+
+# Function to update last word variable
+def update_last_word(event):
+    text = event.widget.get("1.0", tk.END)
+    words = re.findall(r'\b[A-Za-z]+\b', text)
+    if words:
+        last_word.set(words[-1])
+        # Get the most frequent next word for the last word
+        most_frequent = most_frequent_next_word(words[-1])
+        # Update the suggestion box
+        if most_frequent is not None:
+            suggestion_box.configure(text=most_frequent)
+    else:
+        last_word.set("")
+
+# Function to append suggestion to typed text
+def append_suggestion(event):
+    text = txtarea.get("1.0", tk.END)
+    suggestion = suggestion_box.cget("text")
+    txtarea.delete("1.0", tk.END)
+    txtarea.insert("1.0", text.strip() + " " + suggestion + " ")
+
+
+# Create a frame to hold the text input and suggestion box
+input_frame = tk.Frame(root)
+input_frame.pack(side=tk.TOP)
+
+# Bind events to the text input widget
+txtarea.bind("<KeyRelease>", update_last_word)
+txtarea.bind("<KeyPress-4>", append_suggestion)
+
+# Create a label to show the suggestion
+# Create a text widget to show the suggestion
+suggestion_box = tk.Label(input_frame, text="", height=1, width=10, state="disabled", bg="white", fg="gray50")
+suggestion_box.pack(side=tk.LEFT, padx=6, pady=6)
+# Create a variable to hold the last word typed
+last_word = StringVar()
+last_word.set("")
+
+
+###################################################################################
+
+
+
+# Start the Tkinter event loop
+root.mainloop()
+
