@@ -1,7 +1,7 @@
 # TEdi
 Next word prediction using deep learning
 
-Here, the model --->
+Here, the model --->  https://drive.google.com/file/d/1f4YimopDJApmFETsosJZg5TDycNgxW5l/view?usp=drive_link
 Demo            --->  https://drive.google.com/file/d/1Cr-mB_HmLMrKNC9HMwMJgb2xrbRUGuJD/view?usp=drive_link
 
 ![image](https://github.com/Abdul-Rahman-26/TEdi/assets/113432797/66d9750c-f27f-4b06-abca-8e5c7bfc3ff6)
